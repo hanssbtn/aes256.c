@@ -14,9 +14,13 @@
 #define NR (NK + 6)
 
 typedef enum {
+	// Prints words in hex starting from least significant byte first
 	W32_LSB,
+	// Prints words in hex starting from most significant byte first
 	W32_MSB,
+	// Prints bytes in hex starting from least significant byte first
 	W8_LSB,
+	// Prints bytes in hex starting from most significant byte first
 	W8_MSB
 } aes256_block_format_t;
 
