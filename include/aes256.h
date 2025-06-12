@@ -13,8 +13,12 @@
 #define NK 8
 #define NR (NK + 6)
 
-#define W32 0
-#define W8 1
+typedef enum {
+	W32_LSB,
+	W32_MSB,
+	W8_LSB,
+	W8_MSB
+} aes256_block_format_t;
 
 typedef struct {
 	union {
@@ -40,7 +44,7 @@ typedef struct {
 } aes256_key_schedule_t;
 
 typedef struct {
-	
+
 } aes256_context_t;
 
 #endif // AES256_H__
