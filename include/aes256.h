@@ -44,7 +44,9 @@ typedef struct {
 } aes256_key_schedule_t;
 
 typedef struct {
-
+	bool lsb_first;
+	aes256_block_t block;
+	aes256_cipher_key_t key;
 } aes256_context_t;
 
 #endif // AES256_H__

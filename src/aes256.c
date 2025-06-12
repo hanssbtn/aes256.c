@@ -20,11 +20,6 @@
 #define BYTE_READ(x, n) (((x) >> (8 * (n))) & 0xFF)
 #define BYTE_SHIFT(b, n) ((b) << (8 * (n)))
 
-
-uint32_t rot_word(uint32_t word) {
-	return (word >> 24) | ((word & 0x00FFFFFF) << 8);
-}
-
 const uint8_t const SBOX[16 * 16] = {
 	/** R/C     0     1     2     3     4     5     6     7     8     9     A     B     C     D     E     F  */
 	/** 0 */  0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -129,39 +124,15 @@ uint8_t gf256_inverse(uint8_t b){
  * -----------------------------       -----------------------------       ---------------------------------
  */
 
-inline void insert_block(aes256_state_t *state, const aes256_block_t *const in) {
-	// for (int32_t r = 0; r < 4; ++r) {
-	// 	for (int32_t c = 0; c < NB; ++c) {
-	// 		state->w8[4 * r + c] = in->w8[r + 4 * c];
-	// 	}
-	// }
-	// memcpy(state, in, sizeof(aes256_state_t));
+inline void insert_block(aes256_state_t *state, const aes256_block_t *const in, const bool LSB_FIRST) {
 	for (int32_t r = 0; r < NB; ++r) {
-		state->w32[r] = in->w32[r];
-	}
-}
-
-inline void insert_block_reversed(aes256_state_t *state, const aes256_block_t *const in) {
-	for (int32_t r = 0; r < NB; ++r) {
-		state->w32[r] = SWAP32(in->w32[r]);
+		state->w32[r] = LSB_FIRST ? SWAP32(in->w32[r]) : in->w32[r];
 	}
 }
 
 inline void extract_block(const aes256_state_t *const state, aes256_block_t *out) {
-	// for (int32_t r = 0; r < 4; ++r) {
-	// 	for (int32_t c = 0; c < NB; ++c) {
-	// 		out->w8[r + 4 * c] = state->w8[4 * r + c];
-	// 	}
-	// }
-	// memcpy(out, state, sizeof(aes256_state_t));
 	for (int32_t r = 0; r < NB; ++r) {
 		out->w32[r] = state->w32[r];
-	}
-}
-
-inline void extract_block_reversed(const aes256_state_t *const state, aes256_block_t *out) {
-	for (int32_t r = 0; r < NB; ++r) {
-		out->w32[r] = SWAP32(state->w32[r]);
 	}
 }
 
@@ -178,19 +149,8 @@ inline uint8_t gf256_dot(uint8_t a, uint8_t b) {
 }
 
 inline uint32_t gf256_cross(uint32_t b) {
-	uint32_t a = 0x02010103;
 	uint32_t d = 0;
-	// for (int32_t i = 3; i >= 0; --i) {
-	// 	d |= BYTE_SHIFT(
-	// 			gf256_dot(BYTE_READ(a, 3), BYTE_READ(b, 0)) 
-	// 			^ gf256_dot(BYTE_READ(a, 2), BYTE_READ(b, 1)) 
-	// 			^ gf256_dot(BYTE_READ(a, 1), BYTE_READ(b, 2)) 
-	// 			^ gf256_dot(BYTE_READ(a, 0), BYTE_READ(b, 3)), 
-	// 		i);
-	// 	printf("d: %08X\n", d);
-	// 	a = rot_word(a);
-	// }
-	// d = 0;
+	uint32_t a = 0x02010103;
 	for (int32_t i = 0; i < 4; ++i) {
 		d |= BYTE_SHIFT(
 			gf256_dot(BYTE_READ(a, 3), BYTE_READ(b, 0)) 
@@ -220,9 +180,6 @@ void sub_bytes(aes256_state_t *state) {
 }
 
 void shift_rows(aes256_state_t *state) {
-	// state->w32[1] = SWAP32((SWAP32(state->w32[1]) >> 24) | (SWAP32(state->w32[1]) <<  8));
-	// state->w32[2] = SWAP32((SWAP32(state->w32[2]) >> 16) | (SWAP32(state->w32[2]) << 16));
-	// state->w32[3] = SWAP32((SWAP32(state->w32[3]) >>  8) | (SWAP32(state->w32[3]) << 24));
 	uint32_t mask = 0x00FF0000;
 	for (int32_t offset = 1; offset < 4; ++offset) {
 		uint32_t tmp[] = {state->w32[0] & mask, state->w32[1] & mask, state->w32[2] & mask, state->w32[3] & mask};
@@ -234,41 +191,22 @@ void shift_rows(aes256_state_t *state) {
 }
 
 void mix_columns(aes256_state_t *state) {
-	// for (int32_t c = 0; c < NB; ++c) {
-	// 	uint32_t s = 0;
-	// 	for (int32_t r = 0; r < 4; ++r) {
-	// 		s |= BYTE_SHIFT(state->w8[4 * r + c], r); 
-	// 	}
-	// 	s = gf256_cross(s);
-	// 	for (int32_t r = 0; r < 4; ++r) {
-	// 		state->w8[4 * r + c] = BYTE_READ(s, r); 
-	// 	}
-	// }
 	for (int32_t r = 0; r < NB; ++r) {
-		// state->w32[r] = SWAP32(gf256_cross(SWAP32(state->w32[r])));
-		// state->w32[r] = gf256_cross(SWAP32(state->w32[r])));
 		state->w32[r] = gf256_cross(state->w32[r]);
 	}
 }
 
 void add_round_key(aes256_state_t *state, aes256_key_schedule_t *w, int32_t l) {
-	// for (int32_t c = 0; c < NB; ++c) {
-	// 	for (int32_t r = 0; r < 4; ++r) {
-	// 		printf("s[%d,%d] (+) w[%d + %d] = %02X (+) %02X\n", r, c, 4 * (l * 4 + c),  3 - r, state->w8[4 * r + c], w->w8[4 * (l * 4 + c) + 3 - r]);
-	// 		state->w8[4 * r + c] ^= w->w8[4 * (l * 4 + c) + 3 - r];
-	// 	}
-	// }
 	for (int32_t c = 0; c < NB; ++c) {
-		printf("%08X (+) %08X\n", state->w32[c], w->w32[4 * l + c]);
 		state->w32[c] ^= w->w32[4 * l + c];
 	}
 }
 
-void key_expansion(aes256_key_schedule_t *w, const aes256_cipher_key_t *const key) {
+void key_expansion(aes256_key_schedule_t *w, const aes256_cipher_key_t *const key, bool LSB_FIRST) {
 	uint32_t tmp = 0;
 	int32_t i;
 	for (i = 0; i < NK; ++i) {
-		w->w32[i] = SWAP32(key->w32[i]);
+		w->w32[i] = LSB_FIRST ? SWAP32(key->w32[i]) : key->w32[i];
 	}
 	for (; i < (NR + 1) * NB; ++i) {
 		tmp = w->w32[i - 1];
@@ -293,6 +231,7 @@ void key_expansion(aes256_key_schedule_t *w, const aes256_cipher_key_t *const ke
 		printf("%08X\n", (w->w32[i]));
 	}
 }
+
 
 void aes256_block_printf(const aes256_block_t *const block, const uint8_t format) {
 	switch (format) {
@@ -321,27 +260,44 @@ void aes256_block_printf(const aes256_block_t *const block, const uint8_t format
 	}
 }
 
-void aes256_key_schedule_printf(const aes256_key_schedule_t *const w) {
+void aes256_key_schedule_printf(const aes256_key_schedule_t *const w, const bool LSB_FIRST) {
+	if (LSB_FIRST) {
+		for (int32_t k = 0; k < 60; k += 4) {
+			printf("[%d] ", k / 4);
+			for (int32_t i = 0; i < 4; ++i) {
+				printf("%08x", SWAP32(w->w32[k + i]));
+			}
+			printf("\n");
+			printf("[%d] ", k / 4);
+			for (int32_t i = 0; i < 16; ++i) {
+				printf("%02x ", w->w8[k * 4 + i]);
+			}
+			printf("\n");
+		}
+		return;
+	} 
 	for (int32_t k = 0; k < 60; k += 4) {
 		printf("[%d] ", k / 4);
 		for (int32_t i = 0; i < 4; ++i) {
-			printf("%08x", SWAP32(w->w32[k + i]));
+			printf("%08x", w->w32[k + i]);
 		}
 		printf("\n");
 		printf("[%d] ", k / 4);
-		for (int32_t i = 0; i < 16; ++i) {
-			printf("%02x ", w->w8[k * 4 + i]);
+		for (int32_t i = 0; i < 4; ++i) {
+			for (int32_t j = 3; j >= 0; --j) {
+				printf("%02x ", w->w8[k * 4 + 4 * i + j]);
+			}
 		}
 		printf("\n");
 	}
 }
 
-void aes256_encrypt(aes256_block_t *out, const aes256_block_t *const in, const aes256_cipher_key_t *const key) {
+void aes256_encrypt(aes256_block_t *out, const aes256_block_t *const in, const aes256_cipher_key_t *const key, bool LSB_FIRST) {
 	aes256_key_schedule_t w = {};
-	key_expansion(&w, key);
-	aes256_key_schedule_printf(&w);
+	key_expansion(&w, key, LSB_FIRST);
+	aes256_key_schedule_printf(&w, LSB_FIRST);
 	aes256_state_t state;
-	insert_block_reversed(&state, in);
+	insert_block(&state, in, LSB_FIRST);
 	printf("input:\n");
 	aes256_block_printf(&state, W8_LSB);
 	aes256_block_printf(&state, W32_LSB);
@@ -376,11 +332,11 @@ void aes256_encrypt(aes256_block_t *out, const aes256_block_t *const in, const a
 	extract_block(&state, out);
 }
 
-void aes256_decrypt(aes256_block_t *out, const aes256_block_t *const in, const aes256_cipher_key_t *const key) {
+void aes256_decrypt(aes256_block_t *out, const aes256_block_t *const in, const aes256_cipher_key_t *const key, const bool LSB_FIRST) {
 	aes256_key_schedule_t w = {};
-	key_expansion(&w, key);
+	key_expansion(&w, key, LSB_FIRST);
 	aes256_state_t state;
-	insert_block(&state, in);
+	insert_block(&state, in, LSB_FIRST);
 	int32_t round;
 	for (round = 1; round < NR; ++round) {
 		sub_bytes(&state);
@@ -394,14 +350,25 @@ void aes256_decrypt(aes256_block_t *out, const aes256_block_t *const in, const a
 	extract_block(&state, out);
 }
 
-void aes256_ctx_init(aes256_context_t *ctx) {
-	
+void aes256_ctx_init(aes256_context_t *ctx, const uint32_t const key[NK], bool lsb_first) {
+	ctx->lsb_first = lsb_first;
+	ctx->block = (aes256_block_t){};
+	if (lsb_first) {
+		for (int32_t i = 0; i < NK; ++i) {
+			ctx->key.w32[i] = SWAP32(key[i]);
+		}
+	} else {
+		for (int32_t i = 0; i < NK; ++i) {
+			ctx->key.w32[i] = key[i];
+		}
+	}
 }
 
 int32_t main(void) {
 	aes256_block_t plaintext = {
 		.w32 = {
-			SWAP32(0x6BC1BEE2), SWAP32(0x2E409F96), SWAP32(0xE93D7E11), SWAP32(0x7393172A)
+			// SWAP32(0x6BC1BEE2), SWAP32(0x2E409F96), SWAP32(0xE93D7E11), SWAP32(0x7393172A)
+			0x6BC1BEE2, 0x2E409F96, 0xE93D7E11, 0x7393172A
 			// SWAP32(0x00112233), SWAP32(0x44556677), SWAP32(0x8899aabb), SWAP32(0xccddeeff)
 		// AE2D8A57 1E03AC9C 9EB76FAC 45AF8E51
 		// 30C81C46 A35CE411 E5FBC119 1A0A52EF
@@ -409,16 +376,20 @@ int32_t main(void) {
 		}
 	}, out = {};
 	aes256_cipher_key_t key = {
-		.w8 = {
-			0x60, 0x3D, 0xEB, 0x10, 0x15, 0xCA, 0x71, 0xBE, 0x2B, 0x73, 0xAE, 0xF0, 0x85, 0x7D, 0x77, 0x81,
-			0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4
+		.w32 = {
+		// .w8 = {
+		// 	0x60, 0x3D, 0xEB, 0x10, 0x15, 0xCA, 0x71, 0xBE, 0x2B, 0x73, 0xAE, 0xF0, 0x85, 0x7D, 0x77, 0x81,
+		// 	0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4
+			0x603DEB10, 0x15CA71BE, 0x2B73AEF0, 0x857D7781,
+			0x1F352C07, 0x3B6108D7, 0x2D9810A3, 0x0914DFF4
 			// 0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f, 
 			// 0x10111213, 0x14151617, 0x18191a1b, 0x1c1d1e1f
 		}
 	};
+
 	// aes256_key_schedule_t w = {};
 	// key_expansion(&w, &key);
-	aes256_encrypt(&out, &plaintext, &key);
+	aes256_encrypt(&out, &plaintext, &key, false);
 	aes256_block_printf(&out, W32_LSB);
 	aes256_block_printf(&out, W8_LSB);
 	return 0;
