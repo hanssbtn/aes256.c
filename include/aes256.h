@@ -13,6 +13,9 @@
 #define NK 8
 #define NR (NK + 6)
 
+#define W32 0
+#define W8 1
+
 typedef struct {
 	union {
 		uint32_t w32[NK];
@@ -35,5 +38,9 @@ typedef struct {
 		uint8_t w8[NB * (NR + 1) * 4];
 	};
 } aes256_key_schedule_t;
+
+typedef struct {
+	
+} aes256_context_t;
 
 #endif // AES256_H__
