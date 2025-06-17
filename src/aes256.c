@@ -156,14 +156,6 @@ static inline void insert_block(aes256_state_t *state, const aes256_block_t *con
 	}
 }
 
-#if 0
-static inline void extract_block(const aes256_state_t *const state, aes256_block_t *out) {
-	for (int32_t r = 0; r < NB; ++r) {
-		out->w32[r] = state->w32[r];
-	}
-}
-#endif
-
 static inline uint8_t gf256_dot(uint8_t a, uint8_t b) {
 	uint8_t c = 0;
 	while (b > 0) {
@@ -257,25 +249,25 @@ void key_expansion(aes256_key_schedule_t *w, const aes256_cipher_key_t *const ke
 	}
 	for (; i < (NR + 1) * NB; ++i) {
 		tmp = w->w32[i - 1];
-		printf("%d\t", i);
-		printf("%08X\t", tmp);
+		// printf("%d\t", i);
+		// printf("%08X\t", tmp);
 		if (i % NK == 0) {
-			printf("%08X\t", _rotl(tmp, 8));
-			printf("%08X\t", sub_words(_rotl(tmp, 8)));
+			// printf("%08X\t", _rotl(tmp, 8));
+			// printf("%08X\t", sub_words(_rotl(tmp, 8)));
 			tmp = sub_words(_rotl(tmp, 8)) ^ RCON[i / NK];
-			printf("%08X\t", RCON[i / NK]);
-			printf("%08X\t", tmp);
+			// printf("%08X\t", RCON[i / NK]);
+			// printf("%08X\t", tmp);
 		} else if (i % NK == 4) {
-			printf("\t\t\t");
+			// printf("\t\t\t");
 			tmp = sub_words(tmp);
-			printf("%08X\t", tmp);
-			printf("\t\t\t\t\t\t");
+			// printf("%08X\t", tmp);
+			// printf("\t\t\t\t\t\t");
 		} else {
-			printf("\t\t\t\t\t\t\t\t\t\t\t\t");
+			// printf("\t\t\t\t\t\t\t\t\t\t\t\t");
 		}
-		printf("%08X\t", (w->w32[i - NK]));
+		// printf("%08X\t", (w->w32[i - NK]));
 		w->w32[i] = w->w32[i - NK] ^ tmp;
-		printf("%08X\n", (w->w32[i]));
+		// printf("%08X\n", (w->w32[i]));
 	}
 }
 
@@ -377,8 +369,8 @@ int32_t aes256_ctx_append_block(aes256_context_t *ctx, const aes256_block_t *con
 	}
 	memcpy(ctx->out.buf + ctx->out.length, in->w8, sizeof(aes256_block_t));
 	ctx->out.length += sizeof(aes256_block_t);
-	printf("Result: \n");
-	print_byte_array(ctx->out.buf, ctx->out.length);
+	// printf("Result: \n");
+	// print_byte_array(ctx->out.buf, ctx->out.length);
 	return 0;
 }
 
@@ -392,44 +384,44 @@ int32_t aes256_ctx_free(aes256_context_t *ctx) {
 void aes256_encrypt(aes256_context_t *ctx) {
 	aes256_state_t state;
 	insert_block(&state, &ctx->in, ctx->big_endian);
-	printf("input:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("input:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	add_round_key(&state, &ctx->key_schedule, 0);
-	printf("add_round_key:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("add_round_key:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	int32_t round;
 	for (round = 1; round < NR; ++round) {
-		printf("ROUND %d\n", round);
+		// printf("ROUND %d\n", round);
 		sub_bytes(&state);
-		printf("sub_bytes:\n");
-		aes256_block_printf(&state, W8_LITTLE);
+		// printf("sub_bytes:\n");
+		// aes256_block_printf(&state, W8_LITTLE);
 
 		shift_rows(&state);
-		printf("shift_rows:\n");
-		aes256_block_printf(&state, W8_LITTLE);
+		// printf("shift_rows:\n");
+		// aes256_block_printf(&state, W8_LITTLE);
 		
 		mix_columns(&state, false);
-		printf("mix_columns:\n");
-		aes256_block_printf(&state, W8_LITTLE);
+		// printf("mix_columns:\n");
+		// aes256_block_printf(&state, W8_LITTLE);
 		
 		add_round_key(&state, &ctx->key_schedule, round);
-		printf("add_round_key:\n");
-		aes256_block_printf(&state, W8_LITTLE);
+		// printf("add_round_key:\n");
+		// aes256_block_printf(&state, W8_LITTLE);
 	}
 	
 	sub_bytes(&state);
-	printf("sub_bytes:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("sub_bytes:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	shift_rows(&state);
-	printf("shift_rows:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("shift_rows:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	add_round_key(&state, &ctx->key_schedule, NR);
-	printf("add_round_key:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("add_round_key:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	aes256_ctx_append_block(ctx, &state);
 }
@@ -437,45 +429,45 @@ void aes256_encrypt(aes256_context_t *ctx) {
 void aes256_decrypt(aes256_context_t *ctx) {
 	aes256_state_t state;
 	insert_block(&state, &ctx->in, ctx->big_endian);
-	printf("input:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("input:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	add_round_key(&state, &ctx->key_schedule, NR);
-	printf("add_round_key:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("add_round_key:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	inv_sub_bytes(&state);
-	printf("inv_sub_bytes:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("inv_sub_bytes:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	inv_shift_rows(&state);
-	printf("inv_shift_rows:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("inv_shift_rows:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	int32_t round;
 	for (round = NR - 1; round > 0; --round) {
-		printf("ROUND %d\n", round);
+		// printf("ROUND %d\n", round);
 
 		add_round_key(&state, &ctx->key_schedule, round);
-		printf("add_round_key:\n");
-		aes256_block_printf(&state, W8_LITTLE);
+		// printf("add_round_key:\n");
+		// aes256_block_printf(&state, W8_LITTLE);
 		
 		mix_columns(&state, true);
-		printf("inv_mix_columns:\n");
-		aes256_block_printf(&state, W8_LITTLE);
+		// printf("inv_mix_columns:\n");
+		// aes256_block_printf(&state, W8_LITTLE);
 
 		inv_sub_bytes(&state);
-		printf("inv_sub_bytes:\n");
-		aes256_block_printf(&state, W8_LITTLE);
+		// printf("inv_sub_bytes:\n");
+		// aes256_block_printf(&state, W8_LITTLE);
 		
 		inv_shift_rows(&state);
-		printf("inv_shift_rows:\n");
-		aes256_block_printf(&state, W8_LITTLE);
+		// printf("inv_shift_rows:\n");
+		// aes256_block_printf(&state, W8_LITTLE);
 	}
 
 	add_round_key(&state, &ctx->key_schedule, 0);
-	printf("add_round_keys:\n");
-	aes256_block_printf(&state, W8_LITTLE);
+	// printf("add_round_keys:\n");
+	// aes256_block_printf(&state, W8_LITTLE);
 
 	aes256_ctx_append_block(ctx, &state);
 }
@@ -493,7 +485,7 @@ int32_t aes256_ctx_set_key(aes256_context_t *ctx, const uint8_t key[NK * 4]) {
 		}
 	}
 	key_expansion(&ctx->key_schedule, &cipher_key, ctx->big_endian);
-	aes256_key_printf(&cipher_key, W8_LITTLE);
+	// aes256_key_printf(&cipher_key, W8_LITTLE);
 	return 0;
 }
 
@@ -518,7 +510,7 @@ int32_t aes256_ctx_init(aes256_context_t *ctx, const uint8_t key[NK * 4], const 
 			}
 		}
 		key_expansion(&ctx->key_schedule, &cipher_key, BIG_ENDIAN);
-		aes256_key_printf(&cipher_key, W8_LITTLE);
+		// aes256_key_printf(&cipher_key, W8_LITTLE);
 	}
 	return 0;
 }
@@ -544,8 +536,6 @@ int32_t aes256_ctx_decrypt_digest(aes256_context_t *ctx, const uint8_t *cipherte
 	if (!ctx || !ciphertext) return -1;
 	if (ciphertext_length < 0) return 0;
 	ssize_t count = ciphertext_length / sizeof(aes256_block_t), rem = ciphertext_length % sizeof(aes256_block_t);
-	printf("-----------------------------------------------\n");
-	print_byte_array(ciphertext, ciphertext_length);
 	for (ssize_t i = 0; i < count; ++i) {
 		memcpy(&ctx->in, ciphertext, sizeof(aes256_block_t));
 		ciphertext += sizeof(aes256_block_t);
@@ -564,6 +554,8 @@ int32_t aes256_ctx_finalize(aes256_context_t *ctx, uint8_t *buf, const ssize_t b
 	memcpy(buf, ctx->out.buf, __min(ctx->out.length, buf_length));
 	return 0;
 }
+
+#ifdef MAIN
 
 int32_t main(void) {
 	aes256_block_t _plaintext = {
@@ -617,3 +609,5 @@ int32_t main(void) {
 	aes256_ctx_free(&ctx);
 	return 0;
 }
+
+#endif
