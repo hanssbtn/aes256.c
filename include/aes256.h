@@ -14,14 +14,14 @@
 #define NR (NK + 6)
 
 typedef enum {
-	// Prints words in hex starting from least significant byte first
-	W32_LSB,
-	// Prints words in hex starting from most significant byte first
-	W32_MSB,
-	// Prints bytes in hex starting from least significant byte first
-	W8_LSB,
-	// Prints bytes in hex starting from most significant byte first
-	W8_MSB
+	// Prints words in hex in big endian notation
+	W32_BIG,
+	// Prints words in hex in little endian notation
+	W32_LITTLE,
+	// Prints bytes in hex in big endian notation
+	W8_BIG,
+	// Prints bytes in hex in little endian notation
+	W8_LITTLE
 } aes256_block_format_t;
 
 typedef struct {
@@ -48,8 +48,12 @@ typedef struct {
 } aes256_key_schedule_t;
 
 typedef struct {
-	bool lsb_first;
-	aes256_block_t block;
+	bool big_endian;
+	struct {
+		ssize_t length, size;
+		uint8_t *buf;
+	} out;
+	aes256_block_t in;
 	aes256_cipher_key_t key;
 } aes256_context_t;
 
