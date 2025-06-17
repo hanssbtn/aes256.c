@@ -539,11 +539,9 @@ int32_t aes256_ctx_decrypt_digest(aes256_context_t *ctx, const uint8_t *cipherte
 	return 0;
 }
 
-int32_t aes256_ctx_finalize(aes256_context_t *ctx, uint8_t **buf, ssize_t *buf_length) {
-	if (!ctx || !buf || !ctx->out.buf || !buf_length) return -1;
-	*buf = ctx->out.buf;
-	*buf_length = ctx->out.length;
-	*ctx = (aes256_context_t){};
+int32_t aes256_ctx_finalize(aes256_context_t *ctx, uint8_t *buf, const ssize_t buf_length) {
+	if (!ctx || !ctx->out.buf || !buf) return -1;
+	memcpy(buf, ctx->out.buf, __min(ctx->out.length, buf_length));
 	return 0;
 }
 
@@ -571,33 +569,31 @@ int32_t main(void) {
 	};
 
 	uint8_t plaintext[] = {
-		0xE2, 0xBE, 0xC1, 0x6B, 
-		0x96, 0x9F, 0x40, 0x2E, 
-		0x11, 0x7E, 0x3D, 0xE9, 
-		0x2A, 0x17, 0x93, 0x73
+		0x6B, 0xC1, 0xBE, 0xE2,
+		0x2E, 0x40, 0x9F, 0x96,
+		0xE9, 0x3D, 0x7E, 0x11,
+		0x73, 0x93, 0x17, 0x2A,
+		0xAE, 0x2D, 0x8A, 0x57,
+		0x1E, 0x03, 0xAC, 0x9C,
+		0x9E, 0xB7, 0x6F, 0xAC,
+		0x45, 0xAF, 0x8E, 0x51
 	};
-	uint8_t *ciphertext = NULL;
-	const ssize_t plaintext_length = 16;
-	const ssize_t ciphertext_length = 16;
-	ssize_t len = 0;
+	uint8_t ciphertext[32] = {};
+	const ssize_t plaintext_length = 32;
+	const ssize_t ciphertext_length = 32;
 	aes256_context_t ctx;
-	aes256_ctx_init(&ctx, key.w8, false);
+	aes256_ctx_init(&ctx, key.w8, true);
 	
-	// aes256_key_schedule_t w = {};
-	// key_expansion(&w, &key, false);
 	aes256_ctx_encrypt_digest(&ctx, plaintext, plaintext_length);
-	aes256_ctx_finalize(&ctx, &ciphertext, &len);
+	aes256_ctx_finalize(&ctx, ciphertext, ciphertext_length);
 	printf("encrypt:\n");
-	print_byte_array(ciphertext, len);
-	
+	print_byte_array(ciphertext, ciphertext_length);
 	
 	aes256_ctx_init(&ctx, key.w8, false);
-	aes256_ctx_decrypt_digest(&ctx, ciphertext, len);
-	free(ciphertext);
-	aes256_ctx_finalize(&ctx, &ciphertext, &len);
+	aes256_ctx_decrypt_digest(&ctx, ciphertext, ciphertext_length);
+	aes256_ctx_finalize(&ctx, plaintext, plaintext_length);
 	printf("decrypt:\n");
-	print_byte_array(ciphertext, len);
-	free(ciphertext);
-
+	print_byte_array(plaintext, plaintext_length);
+	aes256_ctx_free(&ctx);
 	return 0;
 }
