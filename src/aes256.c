@@ -552,6 +552,7 @@ int32_t aes256_ctx_decrypt_digest(aes256_context_t *ctx, const uint8_t *cipherte
 int32_t aes256_ctx_finalize(aes256_context_t *ctx, uint8_t *buf, const ssize_t buf_length) {
 	if (!ctx || !ctx->out.buf || !buf) return -1;
 	memcpy(buf, ctx->out.buf, __min(ctx->out.length, buf_length));
+	ctx->out.length = 0;
 	return 0;
 }
 
