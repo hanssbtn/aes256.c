@@ -26,6 +26,7 @@ typedef enum {
 
 typedef struct {
 	union {
+		uint64_t w64[NK / 2];
 		uint32_t w32[NK];
 		uint8_t w8[NK * 4];
 	};
@@ -33,6 +34,7 @@ typedef struct {
 
 typedef struct {
 	union {
+		uint64_t w64[NB / 2];
 		uint32_t w32[NB];
 		uint8_t w8[NB * 4];
 	};
@@ -59,8 +61,6 @@ typedef struct {
 
 int32_t aes256_ctx_init(aes256_context_t *ctx, const uint8_t key[NK * 4], const bool BIG_ENDIAN);
 int32_t aes256_ctx_set_key(aes256_context_t *ctx, const uint8_t key[NK * 4]);
-int32_t aes256_ctx_encrypt_digest(aes256_context_t *ctx, const uint8_t *plaintext, const ssize_t plaintext_length);
-int32_t aes256_ctx_decrypt_digest(aes256_context_t *ctx, const uint8_t *ciphertext, const ssize_t ciphertext_length);
 int32_t aes256_ctx_finalize(aes256_context_t *ctx, uint8_t *buf, const ssize_t buf_length);
 int32_t aes256_ctx_free(aes256_context_t *ctx);
 #endif // AES256_H__
