@@ -68,7 +68,8 @@ const uint32_t RCON[] = {
 
 void print_byte_array(const uint8_t *const arr, const ssize_t arr_len) {
 	for (ssize_t i = 0; i < arr_len; ++i) {
-		printf("%02X ", arr[i]);
+		if (i > 0 && i % 4 == 0) printf(" ");
+		printf("%02X", arr[i]);
 	}
 	printf("\n");
 }
@@ -239,6 +240,71 @@ void add_round_key(aes256_state_t *state, aes256_key_schedule_t *w, int32_t l) {
 	for (int32_t c = 0; c < NB; ++c) {
 		state->w32[c] ^= w->w32[4 * l + c];
 	}
+}
+
+int32_t aes256_byte_order_swap(uint8_t *buf, const uint32_t buf_length, const aes256_byte_order_t from, const aes256_byte_order_t to) {
+	if (!buf) return -1;
+	if (!buf_length) return 0;
+	uint8_t flag = from | (to << 4);
+	uint8_t *tmp;
+	// F T -> R
+	// 0 0 -> 0
+	// 0 1 -> 16
+	// 0 2 -> 32
+	// 1 0 -> 1
+	// 1 1 -> 17
+	// 1 2 -> 33
+	// 2 0 -> 2
+	// 2 1 -> 18
+	// 2 2 -> 34
+	switch (flag) {
+		case 0: 
+		case 17: 
+		case 34: break;
+		case 1:
+		case 16: {
+			if (buf_length % 4) return -10;
+			for (uint32_t i = 0; i < buf_length; i += 4) {
+				tmp = (uint8_t[]){buf[i + 3], buf[i + 2], buf[i + 1], buf[i]};
+				buf[i] = tmp[0];
+				buf[i + 1] = tmp[1];
+				buf[i + 2] = tmp[2];
+				buf[i + 3] = tmp[3];
+			}
+		} break;
+		case 2:
+		case 32: {
+			if (buf_length % 8) return -10;
+			for (uint32_t i = 0; i < buf_length; i += 8) {
+				tmp = (uint8_t[]){buf[i + 7], buf[i + 6], buf[i + 5], buf[i + 4], buf[i + 3], buf[i + 2], buf[i + 1], buf[i]};
+				buf[i] = tmp[0];
+				buf[i + 1] = tmp[1];
+				buf[i + 2] = tmp[2];
+				buf[i + 3] = tmp[3];
+				buf[i + 4] = tmp[4];
+				buf[i + 5] = tmp[5];
+				buf[i + 6] = tmp[6];
+				buf[i + 7] = tmp[7];
+			}
+		} break;
+		case 18:
+		case 33: {
+			if (buf_length % 8) return -10;
+			for (uint32_t i = 0; i < buf_length; i += 8) {
+				tmp = (uint8_t[]){buf[i + 7], buf[i + 6], buf[i + 5], buf[i + 4], buf[i + 3], buf[i + 2], buf[i + 1], buf[i]};
+				buf[i] = tmp[3];
+				buf[i + 1] = tmp[2];
+				buf[i + 2] = tmp[1];
+				buf[i + 3] = tmp[0];
+				buf[i + 4] = tmp[7];
+				buf[i + 5] = tmp[6];
+				buf[i + 6] = tmp[5];
+				buf[i + 7] = tmp[4];
+			}
+		} break;
+		default: return -5;
+	}
+	return 0;
 }
 
 void key_expansion(aes256_key_schedule_t *w, const aes256_cipher_key_t *const key, bool BIG_ENDIAN) {
@@ -571,8 +637,8 @@ int32_t main(void) {
 	}, _ciphertext = {};
 	aes256_cipher_key_t key = {
 		// .w8 = {
-			// 	0x60, 0x3D, 0xEB, 0x10, 0x15, 0xCA, 0x71, 0xBE, 0x2B, 0x73, 0xAE, 0xF0, 0x85, 0x7D, 0x77, 0x81,
-			// 	0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4
+		// 	0x60, 0x3D, 0xEB, 0x10, 0x15, 0xCA, 0x71, 0xBE, 0x2B, 0x73, 0xAE, 0xF0, 0x85, 0x7D, 0x77, 0x81,
+		// 	0x1F, 0x35, 0x2C, 0x07, 0x3B, 0x61, 0x08, 0xD7, 0x2D, 0x98, 0x10, 0xA3, 0x09, 0x14, 0xDF, 0xF4
 		.w32 = {
 			0x603DEB10, 0x15CA71BE, 0x2B73AEF0, 0x857D7781,
 			0x1F352C07, 0x3B6108D7, 0x2D9810A3, 0x0914DFF4
@@ -586,14 +652,25 @@ int32_t main(void) {
 		0x2E, 0x40, 0x9F, 0x96,
 		0xE9, 0x3D, 0x7E, 0x11,
 		0x73, 0x93, 0x17, 0x2A,
+		
 		0xAE, 0x2D, 0x8A, 0x57,
 		0x1E, 0x03, 0xAC, 0x9C,
 		0x9E, 0xB7, 0x6F, 0xAC,
-		0x45, 0xAF, 0x8E, 0x51
+		0x45, 0xAF, 0x8E, 0x51,
+		
+		0x30, 0xC8, 0x1C, 0x46,
+		0xA3, 0x5C, 0xE4, 0x11, 
+		0xE5, 0xFB, 0xC1, 0x19, 
+		0x1A, 0x0A, 0x52, 0xEF,
+
+		0xF6, 0x9F, 0x24, 0x45,
+		0xDF, 0x4F, 0x9B, 0x17, 
+		0xAD, 0x2B, 0x41, 0x7B, 
+		0xE6, 0x6C, 0x37, 0x10,
 	};
-	uint8_t ciphertext[32] = {};
-	const ssize_t plaintext_length = 32;
-	const ssize_t ciphertext_length = 32;
+	uint8_t ciphertext[64] = {};
+	const ssize_t plaintext_length = 64;
+	const ssize_t ciphertext_length = 64;
 	aes256_context_t ctx;
 	aes256_ctx_init(&ctx, key.w8, true);
 	
@@ -602,7 +679,7 @@ int32_t main(void) {
 	printf("encrypt:\n");
 	print_byte_array(ciphertext, ciphertext_length);
 	
-	aes256_ctx_init(&ctx, key.w8, false);
+	aes256_ctx_init(&ctx, key.w8, true);
 	aes256_ctx_decrypt_digest(&ctx, ciphertext, ciphertext_length);
 	aes256_ctx_finalize(&ctx, plaintext, plaintext_length);
 	printf("decrypt:\n");
@@ -611,4 +688,13 @@ int32_t main(void) {
 	return 0;
 }
 
+
+// BDD1EEF3 3CA0D2B5 7E5A4B06 F881B13D 
+// 10CB1C59 26ED10D4 4AA75BDC 70283631 
+// B921EDB6 F9F4A69C B1E753F1 1DEDAFBE 
+// 7A4B3023 FFF3F939 8F8D7D06 C7EC249E
+// F3EED1BD B5D2A03C 064B5A7E 3DB181F8
+// 591CCB10 D410ED26 DC5BA74A 31362870
+// B6ED21B9 9CA6F4F9 F153E7B1 BEAFED1D
+// 23304B7A 39F9F3FF 067D8D8F 9E24ECC7 
 #endif

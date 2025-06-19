@@ -59,9 +59,16 @@ typedef struct {
 	aes256_block_t in;
 } aes256_context_t;
 
+typedef enum {
+	AES256_BYTE_ORDER_W8,
+	AES256_BYTE_ORDER_W32,
+	AES256_BYTE_ORDER_W64
+} __attribute__((packed)) aes256_byte_order_t;
+
 int32_t aes256_ctx_init(aes256_context_t *ctx, const uint8_t key[NK * 4], const bool BIG_ENDIAN);
 int32_t aes256_ctx_set_key(aes256_context_t *ctx, const uint8_t key[NK * 4]);
 void aes256_block_printf(const aes256_block_t *const block, const uint8_t format);
+int32_t aes256_byte_order_swap(uint8_t *buf, const uint32_t buf_length, const aes256_byte_order_t from, const aes256_byte_order_t to);
 void aes256_key_printf(const aes256_cipher_key_t *const key, const uint8_t format);
 void aes256_key_schedule_printf(const aes256_key_schedule_t *const w, const bool BIG_ENDIAN);
 int32_t aes256_ctx_encrypt_digest(aes256_context_t *ctx, const uint8_t *plaintext, const ssize_t plaintext_length);
